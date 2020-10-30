@@ -2,10 +2,11 @@ package views
 
 import "html/template"
 
-//NewView handles our view pages to reduce overall maintenance and repeat code
+//NewView parses our view pages to reduce overall maintenance and repeat code in main.go
 func NewView(layout string, files ...string) *View {
 	files = append(files,
 		"views/layouts/footer.gohtml",
+		"views/layouts/navbar.gohtml",
 		"views/layouts/bootstrap.gohtml")
 	t, err := template.ParseFiles(files...)
 	if err != nil {

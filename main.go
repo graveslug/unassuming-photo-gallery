@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/graveslug/unassuming-photo-gallery/views"
@@ -29,11 +28,6 @@ func contact(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func faq(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprint(w, "<h1>FAQ all the time for everytime</h1>")
-}
-
 func main() {
 	//There is a an error with the bootstrap partt that causes an undefined views/contact.gohtml is undefined
 	homeView = views.NewView("bootstrap", "views/home.gohtml")
@@ -41,7 +35,6 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
-	r.HandleFunc("/faq", faq)
 	r.HandleFunc("/contact", contact)
 	http.ListenAndServe(":3000", r)
 }
