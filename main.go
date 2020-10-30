@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"net/http"
 
-	"unassuming-photo-gallery/views"
+	"github.com/graveslug/unassuming-photo-gallery/views"
 
 	"github.com/gorilla/mux"
 )
@@ -15,7 +15,8 @@ var contactTemplate *views.View
 
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	if err := homeTemplate.Execute(w, nil); err != nil {
+	err := homeView.Template.Execute(w, nil)
+	if err != nil {
 		panic(err)
 	}
 }
@@ -38,6 +39,7 @@ func main() {
 		"views/home.gohtml")
 	contactTemplate, err = template.ParseFiles(
 		"views/contact.gohtml")
+
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
 	r.HandleFunc("/faq", faq)
