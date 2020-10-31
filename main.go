@@ -14,18 +14,13 @@ var contactView *views.View
 
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	err := homeView.Template.ExecuteTemplate(w, homeView.Layout, nil)
-	if err != nil {
-		panic(err)
-	}
+	errHand(homeView.Render(w, nil))
+
 }
 
 func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-Type", "text/html")
-	err := contactView.Template.ExecuteTemplate(w, contactView.Layout, nil)
-	if err != nil {
-		panic(err)
-	}
+	errHand(contactView.Render(w, nil))
 }
 
 func main() {
@@ -37,4 +32,11 @@ func main() {
 	r.HandleFunc("/", home)
 	r.HandleFunc("/contact", contact)
 	http.ListenAndServe(":3000", r)
+}
+
+//errHand helper function that panics (like me) when there is an error
+func errHand(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

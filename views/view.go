@@ -2,6 +2,7 @@ package views
 
 import (
 	"html/template"
+	"net/http"
 	"path/filepath"
 )
 
@@ -20,7 +21,7 @@ func layoutFiles() []string {
 	return files
 }
 
-//NewView parses our view pages to reduce overall maintenance and repeat code in main.go
+//NewView parses our view pages to reduce overall maintenance and repeat code in main.go.
 func NewView(layout string, files ...string) *View {
 	files = append(files, layoutFiles()...)
 	t, err := template.ParseFiles(files...)
@@ -38,4 +39,10 @@ func NewView(layout string, files ...string) *View {
 type View struct {
 	Template *template.Template
 	Layout   string
+}
+
+//Render this will the render method we will use instead of clogging up main.go with someView.Template.ExecuteTemplate(w, someView.Layout, nil)
+func (v *View) Render(w http.ResponseWriter,
+	data interface{}) error {
+	return v.Template.ExecuteTemplate(w, v.Layout, data)
 }
