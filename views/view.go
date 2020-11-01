@@ -40,6 +40,8 @@ func layoutFiles() []string {
 
 //NewView parses our view pages to reduce overall maintenance and repeat code in main.go.
 func NewView(layout string, files ...string) *View {
+	addTemplatePath(files)
+	addTemplateExt(files)
 	files = append(files, layoutFiles()...)
 	t, err := template.ParseFiles(files...)
 	if err != nil {

@@ -6,9 +6,11 @@ import "github.com/graveslug/unassuming-photo-gallery/views"
 func NewStatic() *Static {
 	return &Static{
 		Home: views.NewView(
-			"bootstrap", "views/static/home.gohtml"),
+			"bootstrap", "static/home"),
 		Contact: views.NewView(
-			"bootstrap", "views/static/contact.gohtml"),
+			"bootstrap", "static/contact"),
+		Faq: views.NewView(
+			"bootstrap", "static/faq"),
 	}
 }
 
@@ -16,4 +18,5 @@ func NewStatic() *Static {
 type Static struct {
 	Home    *views.View
 	Contact *views.View
+	Faq     *views.View
 }

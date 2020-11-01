@@ -10,7 +10,7 @@ import (
 //NewUsers This will setup all the views we will need to handle for the user controller which will make it easier to reuse our controllers later on
 func NewUsers() *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "views/users/new.gohtml"),
+		NewView: views.NewView("bootstrap", "users/new"),
 	}
 }
 
