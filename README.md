@@ -10,3 +10,5 @@ Restful
 HTML templating
 gorilla/mux router
 Bootstrap for lazy css
+GORM
+SQL

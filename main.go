@@ -8,6 +8,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	host   = "localhost"
+	port   = 5432
+	user   = "graveslug"
+	dbname = "unassuming_photo_gallery"
+)
+
 func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers()
