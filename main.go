@@ -16,7 +16,8 @@ func main() {
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.HandleFunc("/signup", usersC.New).Methods("GET")
 	r.HandleFunc("/signup", usersC.Create).Methods("POST")
-	r.HandleFunc("/faq", staticC.Faq).Methods("GET")
+	//Why does this require the ServeHTTP while the others don't?!
+	r.HandleFunc("/faq", staticC.Faq.ServeHTTP).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 	http.ListenAndServe(":3000", r)
 }
