@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/graveslug/unassuming-photo-gallery/controllers"
+	"github.com/graveslug/unassuming-photo-gallery/models"
 
 	"github.com/gorilla/mux"
 )
@@ -16,8 +18,18 @@ const (
 )
 
 func main() {
+	//Create a DB connection string and then use it to create the model services
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
+		host, port, user, dbname)
+	us, err := models.NewUserService(psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer us.Close()
+	us.AutoMigrate()
+
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers()
+	usersC := controllers.NewUsers(us)
 
 	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")

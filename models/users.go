@@ -18,8 +18,10 @@ var (
 //User model
 type User struct {
 	gorm.Model
-	Name  string
-	Email string `gorm:"not null;unique_index"`
+	Name         string
+	Email        string `gorm:"not null;unique_index"`
+	Password     string `gorm:"-"`
+	PasswordHash string `gorm:"not null"`
 }
 
 //UserService provides methods for querying, creating, and updating the users.
@@ -62,7 +64,7 @@ func (us *UserService) DestructiveReset() error {
 	if err != nil {
 		return err
 	}
-	us.db.AutoMigrate(&User{})
+	return us.AutoMigrate()
 }
 
 //Create will create the user and backfill data like the ID createdAt and udpatedAt fields
