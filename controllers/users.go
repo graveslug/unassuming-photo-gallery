@@ -11,8 +11,9 @@ import (
 //NewUsers This will setup all the views we will need to handle for the user controller which will make it easier to reuse our controllers later on
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "users/new"),
-		us:      us,
+		NewView:   views.NewView("bootstrap", "users/new"),
+		LoginView: views.NewView("bootstrap", "users/new"),
+		us:        us,
 	}
 }
 
@@ -32,8 +33,9 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	user := models.User{
-		Name:  form.Name,
-		Email: form.Email,
+		Name:     form.Name,
+		Email:    form.Email,
+		Password: form.Password,
 	}
 	if err := u.us.Create(&user); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -44,8 +46,9 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 //Users structure for the controller
 type Users struct {
-	NewView *views.View
-	us      *models.UserService
+	NewView   *views.View
+	LoginView *views.View
+	us        *models.UserService
 }
 
 //SignupForm repersents the input fields of our signup form.

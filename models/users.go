@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	//I don't want to defend why I'm doing this. :(
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -13,6 +14,8 @@ var (
 	ErrNotFound = errors.New("models: resource not found")
 	//ErrInvalidID is returned when an invalid ID is provided to a method like Delete.
 	ErrInvalidID = errors.New("models: ID provided was invalid")
+
+	userPwPepper = "Don'tGetExcitedThisWillChangeAndThereIsNoCloud"
 )
 
 //User model
@@ -67,8 +70,16 @@ func (us *UserService) DestructiveReset() error {
 	return us.AutoMigrate()
 }
 
-//Create will create the user and backfill data like the ID createdAt and udpatedAt fields
+//Create will create the user and backfill data like the ID createdAt and updatedAt fields
 func (us *UserService) Create(user *User) error {
+	pwBytes := []byte(user.Password + userPwPepper)
+	hashedBytes, err := bcrypt.GenerateFromPassword(
+		pwBytes, bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = string(hashedBytes)
+	user.Password = ""
 	return us.db.Create(user).Error
 }
 
