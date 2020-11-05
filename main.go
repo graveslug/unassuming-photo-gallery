@@ -6,6 +6,7 @@ import (
 
 	"github.com/graveslug/unassuming-photo-gallery/controllers"
 	"github.com/graveslug/unassuming-photo-gallery/models"
+	"github.com/graveslug/unassuming-photo-gallery/rand"
 
 	"github.com/gorilla/mux"
 )
@@ -18,6 +19,8 @@ const (
 )
 
 func main() {
+	fmt.Println(rand.String(10))
+	fmt.Println(rand.RememberToken())
 	//Create a DB connection string and then use it to create the model services
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
 		host, port, user, dbname)
