@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/graveslug/unassuming-photo-gallery/models"
+	"github.com/graveslug/unassuming-photo-gallery/rand"
 	"github.com/graveslug/unassuming-photo-gallery/views"
 )
 
@@ -41,7 +42,12 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "User is", user)
+	err := u.signIn(w, &user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/cookietest", http.StatusFound)
 }
 
 //Login is used to process the login form of a user when they try to login in as an existing user via email and PW
@@ -65,22 +71,49 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	cookie := http.Cookie{
-		Name:  "email",
-		Value: user.Email,
+	err = u.signIn(w, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	http.SetCookie(w, &cookie)
-	fmt.Fprintln(w, user)
+	http.Redirect(w, r, "/cookietest", http.StatusFound)
 }
 
 //CookieTest tests for cookies
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("email")
+	cookie, err := r.Cookie("remember_token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	user, err := u.us.ByRemember(cookie.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprintln(w, "Email is:", cookie.Value)
+}
+
+func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+		user.Remember = token
+		err = u.us.Update(user)
+		if err != nil {
+			return err
+		}
+	}
+
+	cookie := http.Cookie{
+		Name:     "remember_token",
+		Value:    user.Remember,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+	return nil
 }
 
 //Users structure for the controller
