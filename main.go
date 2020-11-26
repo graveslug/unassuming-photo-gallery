@@ -32,7 +32,7 @@ func main() {
 	us.AutoMigrate()
 
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(us)
+	usersC := controllers.NewUsers(&us)
 
 	r := mux.NewRouter()
 	r.Handle("/", staticC.Home).Methods("GET")
@@ -43,7 +43,7 @@ func main() {
 	//Why does this require the ServeHTTP while the others don't?!
 	r.HandleFunc("/faq", staticC.Faq.ServeHTTP).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
-	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
+	//r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 	http.ListenAndServe(":3000", r)
 }
 

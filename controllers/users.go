@@ -9,12 +9,32 @@ import (
 	"github.com/graveslug/unassuming-photo-gallery/views"
 )
 
+//Users structure for the controller
+type Users struct {
+	NewView   *views.View
+	LoginView *views.View
+	us        models.UserService
+}
+
+//SignupForm repersents the input fields of our signup form.
+type SignupForm struct {
+	Name     string `schema:"name"`
+	Email    string `schema:"email"`
+	Password string `schema:"password"`
+}
+
+//LoginForm used as the parameters for logging in
+type LoginForm struct {
+	Email    string `schema:"email"`
+	Password string `schema:"password"`
+}
+
 //NewUsers This will setup all the views we will need to handle for the user controller which will make it easier to reuse our controllers later on
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
 		NewView:   views.NewView("bootstrap", "users/new"),
 		LoginView: views.NewView("bootstrap", "users/login"),
-		us:        us,
+		us:        *us,
 	}
 }
 
@@ -79,20 +99,20 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/cookietest", http.StatusFound)
 }
 
-//CookieTest tests for cookies
-func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("remember_token")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	user, err := u.us.ByRemember(cookie.Value)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintln(w, "Email is:", cookie.Value)
-}
+// //CookieTest tests for cookies
+// func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
+// 	cookie, err := r.Cookie("remember_token")
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	user, err := u.us.ByRemember(cookie.Value)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	fmt.Fprintln(w, "Email is:", cookie.Value)
+// }
 
 func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 	if user.Remember == "" {
@@ -114,24 +134,4 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 	}
 	http.SetCookie(w, &cookie)
 	return nil
-}
-
-//Users structure for the controller
-type Users struct {
-	NewView   *views.View
-	LoginView *views.View
-	us        *models.UserService
-}
-
-//SignupForm repersents the input fields of our signup form.
-type SignupForm struct {
-	Name     string `schema:"name"`
-	Email    string `schema:"email"`
-	Password string `schema:"password"`
-}
-
-//LoginForm used as the parameters for logging in
-type LoginForm struct {
-	Email    string `schema:"email"`
-	Password string `schema:"password"`
 }
