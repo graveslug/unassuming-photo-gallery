@@ -28,7 +28,7 @@ var (
 
 const hmacSecretKey = "thisWillChangeToo"
 
-//UserDB is used to ineract with the users database
+//UserDB is used to interact with the users database
 //For pretty much all single user queries:
 //If the user is found, we will return a nil error
 //If the user is not found, we will return ErrNotFound
@@ -153,19 +153,16 @@ func (ug *userGorm) DestructiveReset() error {
 
 //Create will create the prodvided user and backfill data
 // like the ID, CreatedAt, and UpdatedAt fields
+//Notably when the function first starts it will generate
+//a default Remember token before it tries to hash the token.
 func (uv *userValidator) Create(user *User) error {
-	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+	err := runUserValFns(user,
+		uv.bcryptPassword,
+		uv.setRememberIfUnset,
+		uv.hmacRemember)
+	if err != nil {
 		return err
 	}
-
-	if user.Remember == "" {
-		token, err := rand.RememberToken()
-		if err != nil {
-			return err
-		}
-		user.Remember = token
-	}
-	user.RememberHash = uv.hmac.Hash(user.Remember)
 	return uv.UserDB.Create(user)
 }
 
@@ -193,12 +190,11 @@ func (ug *userGorm) ByEmail(email string) (*User, error) {
 
 //Update will hash a remember token if it is provided
 func (uv *userValidator) Update(user *User) error {
-	if err := runUserValFns(user, uv.bcryptPassword); err != nil {
+	err := runUserValFns(user,
+		uv.bcryptPassword,
+		uv.hmacRemember)
+	if err != nil {
 		return err
-	}
-
-	if user.Remember != "" {
-		user.RememberHash = uv.hmac.Hash(user.Remember)
 	}
 	return uv.UserDB.Update(user)
 }
@@ -258,8 +254,13 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 }
 
 func (uv *userValidator) ByRemember(token string) (*User, error) {
-	rememberHash := uv.hmac.Hash(token)
-	return uv.UserDB.ByRemember(rememberHash)
+	user := User{
+		Remember: token,
+	}
+	if err := runUserValFns(&user, uv.hmacRemember); err != nil {
+		return nil, err
+	}
+	return uv.UserDB.ByRemember(user.RememberHash)
 }
 
 //ByRemember looks up a user with a given rememberToken
@@ -274,6 +275,10 @@ func (ug *userGorm) ByRemember(rememberHash string) (*User, error) {
 }
 
 func (uv *userValidator) bcryptPassword(user *User) error {
+	if user.Password == "" {
+		//We DO NOT need to run this if the password hasn't been changed
+		return nil
+	}
 	pwBytes := []byte(user.Password + userPwPepper)
 	hashedBytes, err := bcrypt.GenerateFromPassword(pwBytes, bcrypt.DefaultCost)
 	if err != nil {
@@ -303,5 +308,32 @@ func runUserValFns(user *User, fns ...userValFn) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (uv *userValidator) hmacRemember(user *User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	user.RememberHash = uv.hmac.Hash(user.Remember)
+	return nil
+}
+
+//Since we cannot save users to the database without a Remember Token
+//we must verify that remember tokens exists and if not
+//a value is given by using the rand package we created.
+//This only runs when we are creating a new user
+//
+//While its tempting to validate the length/size of the token: don't.
+//It will needlessly complicate the function here and lead to bugs.
+func (uv *userValidator) setRememberIfUnset(user *User) error {
+	if user.Remember != "" {
+		return nil
+	}
+	token, err := rand.RememberToken()
+	if err != nil {
+		return err
+	}
+	user.Remember = token
 	return nil
 }
