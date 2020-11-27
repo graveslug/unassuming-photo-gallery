@@ -153,8 +153,11 @@ func (ug *userGorm) DestructiveReset() error {
 
 //Create will create the prodvided user and backfill data
 // like the ID, CreatedAt, and UpdatedAt fields
-//Notably when the function first starts it will generate
-//a default Remember token before it tries to hash the token.
+//
+//Another thing to note that when a user is created our validator runs
+//bcryptPassword encrypts the password
+//setRememberIfUnset sets the remember token if none exists due
+//to the database requiring a remember token
 func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
 		uv.bcryptPassword,
@@ -206,8 +209,11 @@ func (ug *userGorm) Update(user *User) error {
 
 //Delete will delete the user with the provided ID
 func (uv *userValidator) Delete(id uint) error {
-	if id == 0 {
-		return ErrInvalidID
+	var user User
+	user.ID = id
+	err := runUserValFns(&user, uv.idGreaterThan(0))
+	if err != nil {
+		return err
 	}
 	return uv.UserDB.Delete(id)
 }
@@ -311,6 +317,9 @@ func runUserValFns(user *User, fns ...userValFn) error {
 	return nil
 }
 
+//hmacRemember checks if we have a remember token
+//if it does it hashes it
+//this is because we split apart our Remember and RememberHash simple use
 func (uv *userValidator) hmacRemember(user *User) error {
 	if user.Remember == "" {
 		return nil
@@ -336,4 +345,31 @@ func (uv *userValidator) setRememberIfUnset(user *User) error {
 	}
 	user.Remember = token
 	return nil
+}
+
+//idGreaterThan checks if a number is greater than n (or rather zero)
+//because if a number is zero it will delete our entire database table. Yikes.
+//this function is made to be dynamic accepting different values instead of just zero.
+//
+//breaking the function down:
+//The function accepts an uassigned integer and returns a userValFn.
+//This function creates a valdiation function within itself
+//We return a function that matches the userValFn definition.
+//it must accept a pointer to a user and return an error.
+//Rather than storing the function in a variable we precede it with
+//the return keyword, signifying that we want to return that data.
+//We wrap the function with a userValFn(...) to imply that
+//we want to convert this function into the userValFn type.
+//Why?
+//We create a function that accepts a user and returns an error.
+//INside the function we access the unsigned intefer (n)
+//that creates a validation function on the fly that verifies if IDs
+//are greater than any value, no just 0.
+func (uv *userValidator) idGreaterThan(n uint) userValFn {
+	return userValFn(func(user *User) error {
+		if user.ID <= n {
+			return ErrInvalidID
+		}
+		return nil
+	})
 }
