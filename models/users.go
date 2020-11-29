@@ -17,16 +17,25 @@ import (
 var (
 	//ErrNotFound makes an apperance when a resource cannot be found in the database. You can keep trying to find it though if you'd like.
 	ErrNotFound = errors.New("models: resource not found")
-	//ErrInvalidID is returned when an invalid ID is provided to a method like Delete.
-	ErrInvalidID = errors.New("models: ID provided was invalid")
-	//ErrInvalidPassword is returned when invalid password is used when attempting to authenticate the user
-	ErrInvalidPassword = errors.New("models: incorrect password provided")
+	//ErrIDInvalid is returned when an invalid ID is provided to a method like Delete.
+	ErrIDInvalid = errors.New("models: ID provided was invalid")
+	//ErrPasswordIncorrect is returned when invalid password is used when attempting to authenticate the user
+	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
 	//ErrEmailRequired is returned when an email address is
 	//not provided when creating a user
 	ErrEmailRequired = errors.New("models: email address is required")
 	//ErrEmailInvalid is returned when an email address provided
 	//does not match any of our requirements
 	ErrEmailInvalid = errors.New("models: email address is not valid")
+	//ErrEmailTaken  is returned when an update or create
+	//is attempted with an email address that is already in use
+	ErrEmailTaken = errors.New("models: email address is already taken")
+	//ErrPasswordTooShort is returned when a user tries to set
+	//a password that is less than 8 characters long
+	ErrPasswordTooShort = errors.New("models: password must be at least 8 characters long")
+	//ErrPasswordRequired is returned when a create is attempted
+	//without a user password provided
+	ErrPasswordRequired = errors.New("models: password is required")
 
 	userPwPepper = "Don'tGetExcitedThisWillChangeAndThereIsNoCloud"
 
@@ -75,7 +84,9 @@ type User struct {
 //UserService is a set of methods user to manipulate and work with the user model
 type UserService interface {
 	//Authetnticate will verify the provided email address and
-	//password are correct. If correct the user is returned to that email
+	//password are correct. If correct the user is returned to that ///email otherwise you will recieve either:
+	//ErrNotFound, ErrPasswordIncorrect, or another error if
+	//something goes wrong
 	Authenticate(email, password string) (*User, error)
 	UserDB
 }
@@ -124,7 +135,7 @@ func newUserValidator(udb UserDB,
 		UserDB: udb,
 		hmac:   hmac,
 		emailRegex: regexp.MustCompile(
-			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z{2,16}$`),
+			`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z{2,16}]$`),
 	}
 }
 
@@ -176,12 +187,16 @@ func (ug *userGorm) DestructiveReset() error {
 //to the database requiring a remember token
 func (uv *userValidator) Create(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordRequired,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.setRememberIfUnset,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
-		uv.emailFormat)
+		uv.emailFormat,
+		uv.emailIsAvail)
 	if err != nil {
 		return err
 	}
@@ -226,11 +241,14 @@ func (ug *userGorm) ByEmail(email string) (*User, error) {
 //Update will hash a remember token if it is provided
 func (uv *userValidator) Update(user *User) error {
 	err := runUserValFns(user,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
-		uv.emailFormat)
+		uv.emailFormat,
+		uv.emailIsAvail)
 	if err != nil {
 		return err
 	}
@@ -271,7 +289,7 @@ func (ug *userGorm) AutoMigrate() error {
 //if the email address provided is invalid, this will return
 //nil, ErrNotFound
 //If password provided is invalid, this will return
-//nil, errInvalidPassword
+//nil, errPasswordIncorrect
 //if the email and password are both valid this will return
 //user, nil
 //otherwise if another error is encountered this will return
@@ -288,7 +306,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	case nil:
 		return foundUser, nil
 	case bcrypt.ErrMismatchedHashAndPassword:
-		return nil, ErrInvalidPassword
+		return nil, ErrPasswordIncorrect
 	default:
 		return nil, err
 	}
@@ -403,7 +421,7 @@ func (uv *userValidator) setRememberIfUnset(user *User) error {
 func (uv *userValidator) idGreaterThan(n uint) userValFn {
 	return userValFn(func(user *User) error {
 		if user.ID <= n {
-			return ErrInvalidID
+			return ErrIDInvalid
 		}
 		return nil
 	})
@@ -429,6 +447,53 @@ func (uv *userValidator) emailFormat(user *User) error {
 	}
 	if !uv.emailRegex.MatchString(user.Email) {
 		return ErrEmailInvalid
+	}
+	return nil
+}
+
+//emailIsAvail checks to see if the new user creating an account
+//has an email address like that in our database
+func (uv *userValidator) emailIsAvail(user *User) error {
+	existing, err := uv.ByEmail(user.Email)
+	if err == ErrNotFound {
+		//Email address is avaible if we don't find a user
+		//with that email address
+		return nil
+	}
+	//We can't continue our validation without a successful
+	//query, so if we get any error other than ErrNotFound we
+	//return it
+	if err != nil {
+		return err
+	}
+	//if we reach this point it means we found a user w/ this email
+	//address, so we need to see if this is the same user we
+	//are updating, or if have a conflict
+	if user.ID != existing.ID {
+		return ErrEmailTaken
+	}
+	return nil
+}
+
+func (uv *userValidator) passwordMinLength(user *User) error {
+	if user.Password == "" {
+		return nil
+	}
+	if len(user.Password) < 8 {
+		return ErrPasswordTooShort
+	}
+	return nil
+}
+func (uv *userValidator) passwordRequired(user *User) error {
+	if user.Password == "" {
+		return ErrPasswordRequired
+	}
+	return nil
+}
+
+func (uv *userValidator) passwordHashRequired(user *User) error {
+	if user.PasswordHash == "" {
+		return ErrPasswordRequired
 	}
 	return nil
 }
