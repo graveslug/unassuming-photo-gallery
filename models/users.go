@@ -15,6 +15,12 @@ import (
 )
 
 var (
+	//ErrRememberRequired is returned when a create or update
+	//is attempted without a user remember token hash
+	ErrRememberRequired = errors.New("models: remember token is required")
+	//ErrRememberTooShort is returned when a remember token
+	//is not 32 bytes
+	ErrRememberTooShort = errors.New("models: remember token must be at least 32 bytes")
 	//ErrNotFound makes an apperance when a resource cannot be found in the database. You can keep trying to find it though if you'd like.
 	ErrNotFound = errors.New("models: resource not found")
 	//ErrIDInvalid is returned when an invalid ID is provided to a method like Delete.
@@ -192,7 +198,9 @@ func (uv *userValidator) Create(user *User) error {
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
 		uv.setRememberIfUnset,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.normalizeEmail,
 		uv.requireEmail,
 		uv.emailFormat,
@@ -244,7 +252,9 @@ func (uv *userValidator) Update(user *User) error {
 		uv.passwordMinLength,
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
+		uv.rememberMinBytes,
 		uv.hmacRemember,
+		uv.rememberHashRequired,
 		uv.normalizeEmail,
 		uv.requireEmail,
 		uv.emailFormat,
@@ -494,6 +504,26 @@ func (uv *userValidator) passwordRequired(user *User) error {
 func (uv *userValidator) passwordHashRequired(user *User) error {
 	if user.PasswordHash == "" {
 		return ErrPasswordRequired
+	}
+	return nil
+}
+func (uv *userValidator) rememberMinBytes(user *User) error {
+	if user.Remember == "" {
+		return nil
+	}
+	n, err := rand.NBytes(user.Remember)
+	if err != nil {
+		return err
+	}
+	if n < 32 {
+		return ErrRememberTooShort
+	}
+	return nil
+}
+
+func (uv *userValidator) rememberHashRequired(user *User) error {
+	if user.RememberHash == "" {
+		return ErrRememberRequired
 	}
 	return nil
 }
